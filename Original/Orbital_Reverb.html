@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orbital Reverb</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+body{margin:0;padding:20px;-webkit-user-select:none;user-select:none}
+.box{position:relative;max-width:420px;margin:0 auto;padding:28px 22px 20px;overflow:hidden;border:1.5px solid #8fd0ff;border-radius:28px;box-shadow:0 0 22px rgba(143,208,255,.14),inset 0 0 30px rgba(143,208,255,.05);background:radial-gradient(circle at 16px 16px,#8fd0ff 0 2px,transparent 2.6px),radial-gradient(circle at calc(100% - 16px) 16px,#8fd0ff 0 2px,transparent 2.6px),radial-gradient(circle at 16px calc(100% - 16px),#8fd0ff 0 2px,transparent 2.6px),radial-gradient(circle at calc(100% - 16px) calc(100% - 16px),#8fd0ff 0 2px,transparent 2.6px)}
+.box::before{content:"";position:absolute;inset:7px;border:1px solid rgba(143,208,255,.28);border-radius:22px;pointer-events:none}
+.box>*{position:relative;z-index:1}
+.box>svg.orb{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.grp{position:relative;display:flex;flex-wrap:wrap;align-items:center}
+.grp>b{position:absolute;top:7px;font-size:9px;font-weight:400}
+.k{text-align:center;touch-action:none;cursor:ns-resize}
+.k svg{width:100%;display:block}
+.row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:16px 0}
+button{font:inherit;color:inherit}
+.m{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:11px}
+.m i{flex:1;height:4px;overflow:hidden}
+.m u{display:block;height:100%;width:0}
+:root{color-scheme:dark}
+body{background:#0b0b0d;color:#f2f2f2;font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+h1{font-size:11px;font-weight:300;letter-spacing:.6em;text-align:center;opacity:.7;margin:6px 0 10px}
+.grp{padding:32px 0 10px;justify-content:center;gap:10px 24px}
+.grp>b{left:50%;transform:translateX(-50%);letter-spacing:.5em;font-weight:300;opacity:.5}
+.tr{fill:none;stroke:#26262c;stroke-width:1.2}
+.va{fill:none;stroke:var(--c);stroke-width:2.2;stroke-linecap:round}
+.cp{fill:none;stroke:#26262c;stroke-width:1}
+.ln{stroke:var(--c);stroke-width:7;stroke-linecap:round;stroke-dasharray:0 100;stroke-dashoffset:-24}
+.nm{font-size:8.5px;letter-spacing:.25em;text-transform:uppercase;opacity:.45;margin-top:2px}
+.vl{font-size:12px;margin-top:3px}
+button{background:none;border:0;border-bottom:1px solid #3a3a42;padding:6px 8px;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
+button.on{border-color:#8fd0ff}
+#led{display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:12px;vertical-align:middle;background:#8fd0ff;box-shadow:0 0 calc(6px + 12px*var(--lv,0)) rgba(143,208,255,.9);opacity:calc(.75 + .25*var(--lv,0));transition:background .15s}
+#led.off{background:#2a2a30;box-shadow:none;opacity:1}
+.box>.sig{position:absolute;left:0;right:0;bottom:12px;text-align:center;font:italic 12px Georgia,"Times New Roman",serif;letter-spacing:.14em;color:#8fd0ff;opacity:.75;z-index:1}
+.m i{background:#1c1c21}.m u{background:#8fd0ff}
+</style>
+</head>
+<body>
+<div class="box">
+<svg class="orb" viewBox="0 0 420 640" preserveAspectRatio="xMidYMid slice" fill="none" stroke="#2e2e36" stroke-width=".8" aria-hidden="true"><circle cx="210" cy="190" r="70"/><circle cx="210" cy="190" r="115" stroke-dasharray="2 5"/><circle cx="210" cy="190" r="165"/><circle cx="210" cy="190" r="215" stroke-dasharray="1 7"/><circle cx="210" cy="460" r="60" stroke-dasharray="2 5"/><circle cx="210" cy="460" r="110"/><circle cx="210" cy="460" r="160" stroke-dasharray="1 7"/><ellipse cx="210" cy="325" rx="230" ry="55" transform="rotate(-14 210 325)"/><ellipse cx="210" cy="325" rx="190" ry="38" transform="rotate(-14 210 325)" stroke-dasharray="3 6"/><g fill="#4a4a54" stroke="none"><circle cx="325" cy="190" r="3"/><circle cx="102" cy="140" r="2"/><circle cx="168" cy="570" r="3"/><circle cx="360" cy="400" r="2"/><circle cx="52" cy="300" r="2.5"/><circle cx="395" cy="250" r="1.6"/></g></svg>
+<h1>ORBITAL REVERB<i id="led"></i></h1>
+<div class="grp" id="esp" style="--c:#8fd0ff"><b>SPACE</b></div>
+<div class="grp" id="col" style="--c:#8fd0ff"><b>TAIL</b></div>
+<div class="grp" id="mez" style="--c:#8fd0ff"><b>MIX</b></div>
+<div class="m">OUT<i><u id="mG"></u></i></div>
+<div class="row"><button id="play">▶ Play</button><button id="ins">Piano</button><button id="byp" class="on">● Active</button></div>
+<div class="sig">by Dante Ramos</div>
+</div>
+<script>
+const dB=n=>n<.75?-48*(1-n/.75):24*(n-.75),oG=n=>n<.02?0:Math.pow(10,dB(n)/20),pc=n=>Math.round(n*100)+'%';
+const TYPES=[{n:'Moon',len:.5,pw:3.2,br:.75,sw:0,er:1},{n:'Mercury',len:1.6,pw:2.6,br:.6,sw:0,er:0},{n:'Jupiter',len:3.6,pw:2.1,br:.4,sw:.08,er:0},{n:'Black Hole',len:6.5,pw:1.7,br:.3,sw:.5,er:0}];
+const K=[
+{id:'pl',l:'Planet',v:1/3,d:3,g:'esp',s:112,f:n=>TYPES[Math.round(n*3)].n},
+{id:'sz',l:'Size',v:.444,g:'esp',s:84,f:n=>Math.round(60+90*n)+'%'},
+{id:'pd',l:'Pre-delay',v:.15,g:'esp',s:84,f:n=>Math.round(n*200)+' ms'},
+{id:'tone',l:'Tone',v:.75,g:'col',s:89,f:n=>{const h=800*Math.pow(20,n);return h>=1000?(h/1000).toFixed(1)+' kHz':Math.round(h)+' Hz'}},
+{id:'dc',l:'Decay',v:.5,g:'col',s:89,f:pc},
+{id:'mix',l:'Mix',v:.35,g:'mez',s:94,f:pc},
+{id:'out',l:'Output',v:.75,g:'mez',s:94,f:n=>n<.02?'-∞ dB':((dB(n)>=0?'+':'')+dB(n).toFixed(1)+' dB')}
+];
+const S={};K.forEach(k=>S[k.id]=k.v);
+function arc(r,a0,a1){const p=a=>[50+r*Math.sin(a*Math.PI/180),50-r*Math.cos(a*Math.PI/180)];const s=p(a0),e=p(a1);return `M${s[0]} ${s[1]}A${r} ${r} 0 ${a1-a0>180?1:0} 1 ${e[0]} ${e[1]}`}
+K.forEach(k=>{
+ const el=document.createElement('div');el.className='k';el.style.width=k.s+'px';
+ el.innerHTML=`<svg viewBox="0 0 100 100"><path class="tr" d="${arc(42,-135,135)}"/><path class="va"/><circle class="cp" cx="50" cy="50" r="30"/><line class="ln" x1="50" y1="50" x2="50" y2="26"/></svg><div class="nm">${k.l}</div><div class="vl"></div>`;
+ document.getElementById(k.g).appendChild(el);
+ const va=el.querySelector('.va'),ln=el.querySelector('.ln'),vl=el.querySelector('.vl');
+ const draw=()=>{let n=S[k.id];if(k.d)n=Math.round(n*k.d)/k.d;const a=-135+270*Math.max(n,.004);va.setAttribute('d',arc(42,-135,a));ln.setAttribute('transform',`rotate(${-135+270*n} 50 50)`);vl.textContent=k.f(n)};
+ const set=v=>{S[k.id]=Math.min(1,Math.max(0,v));draw();apply()};
+ draw();let y0=0;
+ el.addEventListener('dblclick',()=>set(k.v));
+ el.addEventListener('wheel',e=>{e.preventDefault();set(S[k.id]-e.deltaY/900)},{passive:false});
+ el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);y0=e.clientY;e.preventDefault()});
+ el.addEventListener('pointermove',e=>{if(!el.hasPointerCapture(e.pointerId))return;set(S[k.id]+(y0-e.clientY)/170);y0=e.clientY});
+});
+let C,inG,dryG,wetG,outG,BYP,master,pd,conv,tLP,shFb,shOut,anL,timer,next=0,step=0,playing=false,INS='piano',NB,bpm=120,irKey='',irT;
+function genIR(){
+ const T=TYPES[Math.round(S.pl*3)],sr=C.sampleRate,L=Math.floor(Math.min(7,T.len*(.6+.9*S.sz))*sr),b=C.createBuffer(2,L,sr);
+ for(let c=0;c<2;c++){const d=b.getChannelData(c);let y=0;
+  for(let i=0;i<L;i++){const t=i/L,a=Math.max(.04,T.br*(1-.75*t)),w=T.sw?Math.min(1,i/(T.sw*sr)):1;y+=a*((Math.random()*2-1)-y);d[i]=y*Math.pow(1-t,T.pw*Math.pow(3,1-2*S.dc))*w}
+  if(T.er)for(let k=0;k<8;k++){const p=Math.floor((.004+k*.007+Math.random()*.004)*sr);if(p<L)d[p]+=(.9-k*.08)*(Math.random()<.5?1:-1)}}
+ return b;
+}
+function setIR(){clearTimeout(irT);irT=setTimeout(()=>{wetG.gain.setTargetAtTime(0,C.currentTime,.01);setTimeout(()=>{conv.buffer=genIR();apply()},50)},120)}
+function build(){
+ C=new (window.AudioContext||window.webkitAudioContext)();
+ inG=C.createGain();master=C.createGain();master.gain.value=.8;dryG=C.createGain();wetG=C.createGain();
+ pd=C.createDelay(.5);const revIn=C.createGain();conv=C.createConvolver();tLP=C.createBiquadFilter();tLP.type='lowpass';
+ inG.connect(dryG);dryG.connect(master);inG.connect(pd);pd.connect(revIn);revIn.connect(conv);conv.connect(tLP);tLP.connect(wetG);wetG.connect(master);
+ const lim=C.createDynamicsCompressor();lim.threshold.value=-1;lim.knee.value=2;lim.ratio.value=12;lim.attack.value=.003;lim.release.value=.1;
+ outG=C.createGain();BYP=C.createGain();BYP.gain.value=0;master.connect(lim);lim.connect(outG);inG.connect(BYP);BYP.connect(outG);outG.connect(C.destination);
+ anL=C.createAnalyser();anL.fftSize=512;outG.connect(anL);
+ irKey=Math.round(S.pl*3)+'|'+S.sz.toFixed(2)+'|'+S.dc.toFixed(2);conv.buffer=genIR();apply();
+}
+function apply(){
+ if(!C)return;const t=C.currentTime,tc=.03,m=S.mix*Math.PI/2;
+ pd.delayTime.setTargetAtTime(S.pd*.2,t,tc);tLP.frequency.setTargetAtTime(800*Math.pow(20,S.tone),t,tc);
+ dryG.gain.setTargetAtTime(Math.cos(m),t,tc);wetG.gain.setTargetAtTime(Math.sin(m)*1.4,t,tc);outG.gain.setTargetAtTime(oG(S.out),t,tc);
+ const key=Math.round(S.pl*3)+'|'+S.sz.toFixed(2)+'|'+S.dc.toFixed(2);if(key!==irKey){irKey=key;setIR()}
+}
+function note(t,semi){
+ const f=220*Math.pow(2,semi/12),o=C.createOscillator(),o2=C.createOscillator(),lp=C.createBiquadFilter(),g=C.createGain();
+ o.type='sawtooth';o2.type='square';o.frequency.value=f;o2.frequency.value=f*1.006;
+ lp.type='lowpass';lp.frequency.setValueAtTime(3200,t);lp.frequency.exponentialRampToValueAtTime(400,t+.28);
+ g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.16,t+.008);g.gain.exponentialRampToValueAtTime(.001,t+.36);
+ o.connect(lp);o2.connect(lp);lp.connect(g);g.connect(inG);o.start(t);o2.start(t);o.stop(t+.4);o2.stop(t+.4);
+}
+function piano(t,semi){
+ const f=220*Math.pow(2,semi/12),g=C.createGain(),lp=C.createBiquadFilter();
+ lp.type='lowpass';lp.frequency.setValueAtTime(Math.min(9000,f*12),t);lp.frequency.exponentialRampToValueAtTime(f*2.5,t+1.4);
+ g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.22,t+.004);g.gain.exponentialRampToValueAtTime(.001,t+2);
+ [[1,1],[2,.5],[3,.28],[4,.14]].forEach(([m,a])=>{const o=C.createOscillator(),og=C.createGain();o.frequency.value=f*m*(1+.0005*m*m);
+  og.gain.setValueAtTime(a,t);og.gain.exponentialRampToValueAtTime(.001,t+2/m);o.connect(og);og.connect(lp);o.start(t);o.stop(t+2.1)});
+ lp.connect(g);g.connect(inG);
+ if(!NB){NB=C.createBuffer(1,C.sampleRate*.03,C.sampleRate);const d=NB.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length)}
+ const n=C.createBufferSource(),nf=C.createBiquadFilter(),ng=C.createGain();n.buffer=NB;nf.type='bandpass';nf.frequency.value=f*4;ng.gain.value=.1;
+ n.connect(nf);nf.connect(ng);ng.connect(inG);n.start(t);
+}
+const P=[12,null,null,null,null,null,7,null,null,null,15,null,null,null,null,null,10,null,null,null,null,null,7,null,null,null,null,null,3,null,null,null];
+function tick(){while(next<C.currentTime+.2){const s=P[step%32];if(s!=null)(INS==='piano'?piano:note)(next,s);next+=60/bpm/4;step++}}
+const btn=document.getElementById('play');
+btn.onclick=async()=>{if(!C)build();await C.resume();
+ if(!playing){next=C.currentTime+.05;step=0;timer=setInterval(tick,40);playing=true;btn.textContent='■ Stop';btn.classList.add('on')}
+ else{clearInterval(timer);playing=false;btn.textContent='▶ Play';btn.classList.remove('on')}};
+document.getElementById('ins').onclick=e=>{INS=INS==='piano'?'synth':'piano';e.target.textContent=INS==='piano'?'Piano':'Sinte'};
+const bp=document.getElementById('byp');let byp=false;
+bp.onclick=async()=>{if(!C)build();await C.resume();byp=!byp;const t=C.currentTime;master.gain.setTargetAtTime(byp?0:.8,t,.01);BYP.gain.setTargetAtTime(byp?.8:0,t,.01);bp.textContent=byp?'○ Bypass':'● Active';bp.classList.toggle('on',!byp);document.getElementById('led').classList.toggle('off',byp)};
+const ledEl=document.getElementById('led'),bl=new Uint8Array(512),mG=document.getElementById('mG');
+function pk(a){a.getByteTimeDomainData(bl);let m=0;for(let i=0;i<bl.length;i++)m=Math.max(m,Math.abs(bl[i]-128));return m/128}
+(function loop(){if(C&&anL){const l=pk(anL);mG.style.width=Math.min(100,l*160)+'%';ledEl.style.setProperty('--lv',Math.min(1,l*2).toFixed(2))}requestAnimationFrame(loop)})();
+window.setHostTempo=b=>{bpm=b;apply()};
+</script>
+</body>
+</html>

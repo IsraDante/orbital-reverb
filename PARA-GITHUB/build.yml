@@ -1,0 +1,53 @@
+name: Compilar Orbital Reverb
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    name: Windows (VST3)
+    runs-on: windows-latest
+    steps:
+      - name: Descargar el proyecto
+        uses: actions/checkout@v4
+
+      - name: Preparar
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Compilar
+        run: cmake --build build --config Release --parallel
+
+      - name: Guardar el plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: Orbital-Reverb-Windows
+          path: build/OrbitalReverb_artefacts/Release/VST3/
+
+  mac:
+    name: Mac (VST3 + AU)
+    runs-on: macos-latest
+    steps:
+      - name: Descargar el proyecto
+        uses: actions/checkout@v4
+
+      - name: Preparar
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+
+      - name: Compilar
+        run: cmake --build build --config Release --parallel
+
+      - name: Firmar y empaquetar
+        run: |
+          mkdir -p dist
+          cd build/OrbitalReverb_artefacts/Release
+          codesign --force --deep --sign - "VST3/Orbital Reverb.vst3"
+          codesign --force --deep --sign - "AU/Orbital Reverb.component"
+          ditto -c -k --keepParent "VST3/Orbital Reverb.vst3" "$GITHUB_WORKSPACE/dist/Orbital Reverb VST3.zip"
+          ditto -c -k --keepParent "AU/Orbital Reverb.component" "$GITHUB_WORKSPACE/dist/Orbital Reverb AU.zip"
+
+      - name: Guardar el plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: Orbital-Reverb-Mac
+          path: dist/
